@@ -1,5 +1,5 @@
 
-# Curves Library
+# PolyCurve
 
 A lightweight .NET library for polynomial curve generation, manipulation, and analysis. This library can fit polynomials to data points, evaluate them, find roots, compute integrals, locate extrema, and more—all in one place. It uses MathNet.Numerics under the hood in some places and runs custom logic on top of it for easier usage.
 ## Features
@@ -22,7 +22,7 @@ A lightweight .NET library for polynomial curve generation, manipulation, and an
 ## Basic usage
 
 ```csharp
-using Curves.Library;
+using PolyCurve;
 
 double[] coeffs = { -256, 64, 60, -16, 1 }; 
 Curve polynomialCurve = new Curve(coeffs, xMin: -3, xMax: 11);
@@ -51,4 +51,4 @@ By default, calling Interpolate(x) with x outside the domain throws an ArgumentO
 This library is open source and free for all. Pull requests are welcome! Please make sure any changes are well-documented and (if possible) covered by tests.
 ## License
 
-Released under the [MIT License](https://github.com/MuratOzc/CurvesSolution/blob/master/LICENSE.txt). Feel free to use it for personal or commercial projects.
+Released under the [MIT License](https://github.com/MuratOzc/PolyCurve/blob/master/LICENSE.txt). Feel free to use it for personal or commercial projects.

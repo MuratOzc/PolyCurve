@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CurvesLibrary\CurvesLibrary.csproj" />
+    <ProjectReference Include="..\PolyCurve\PolyCurve.csproj" />
   </ItemGroup>
 
 </Project>

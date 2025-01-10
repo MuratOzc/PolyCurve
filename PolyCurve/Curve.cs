@@ -1,13 +1,8 @@
 ﻿using MathNet.Numerics;
 using MathNet.Numerics.Integration;
 using MathNet.Numerics.Statistics;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace CurvesLibrary
+namespace PolyCurve
 {
     public class Curve
     {
@@ -269,12 +264,12 @@ namespace CurvesLibrary
                     try
                     {
                         double root = MathNet.Numerics.RootFinding.Brent.FindRoot(
-                    derivative.PolynomialFunction,
-                    x,
-                    nextX,
-                    tolerance,
-                    MaxIterations
-                );
+                                            derivative.PolynomialFunction,
+                                            x,
+                                            nextX,
+                                            tolerance,
+                                            MaxIterations
+                                        );
 
                         if (root >= XMin && root <= XMax)
                         {
@@ -646,7 +641,7 @@ namespace CurvesLibrary
 
             // Calculate the y-coordinates for each intersection point
             List<(double X, double Y)> intersectionPoints = intersectionXs
-            .Select(x => (X: x, Y: this.Interpolate(x)))
+            .Select(x => (X: x, Y: Interpolate(x)))
             .ToList();
 
             return intersectionPoints;
@@ -691,9 +686,9 @@ namespace CurvesLibrary
             int samplePoints = 100;
             // Create a list of 100 equally spaced points for each curve
             double[] xValues1 = Enumerable.Range(0, samplePoints)
-            .Select(i => this.XMin + i * (this.XMax - this.XMin) / (samplePoints - 1))
+            .Select(i => XMin + i * (XMax - XMin) / (samplePoints - 1))
             .ToArray();
-            double[] yValues1 = xValues1.Select(x => this.PolynomialFunction(x)).ToArray();
+            double[] yValues1 = xValues1.Select(x => PolynomialFunction(x)).ToArray();
 
             double[] xValues2 = Enumerable.Range(0, samplePoints)
             .Select(i => otherCurve.XMin + i * (otherCurve.XMax - otherCurve.XMin) / (samplePoints - 1))
@@ -832,7 +827,7 @@ namespace CurvesLibrary
 
             return new FittingQualityMetrics
             {
-                RSquared = 1 - (sse / sst),
+                RSquared = 1 - sse / sst,
                 MeanSquaredError = mse,
                 RootMeanSquaredError = Math.Sqrt(mse),
                 MeanAbsoluteError = mae
@@ -909,9 +904,9 @@ namespace CurvesLibrary
 
         public static Curve operator +(double scalar, Curve a) => a + scalar;
 
-        public static Curve operator -(Curve a, double scalar) => a + (-scalar);
+        public static Curve operator -(Curve a, double scalar) => a + -scalar;
 
-        public static Curve operator -(double scalar, Curve a) => a + (-scalar);
+        public static Curve operator -(double scalar, Curve a) => a + -scalar;
 
         public static Curve operator >>(Curve curve, double shift) => curve.ShiftHorizontal(shift);
         public static Curve operator <<(Curve curve, double shift) => curve.ShiftHorizontal(-shift);
@@ -919,7 +914,7 @@ namespace CurvesLibrary
 
         public override string ToString()
         {
-            return string.Join(" + ", PolynomialCoeffs.Select((c, i) => ($"{c}x^{i}").Replace(",", "."))
+            return string.Join(" + ", PolynomialCoeffs.Select((c, i) => $"{c}x^{i}".Replace(",", "."))
                 .Where(s => !string.IsNullOrEmpty(s)));
         }
     }

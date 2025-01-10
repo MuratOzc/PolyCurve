@@ -1,4 +1,5 @@
-﻿using CurvesLibrary;
+﻿using PolyCurve;
+
 
 // Example usage
 

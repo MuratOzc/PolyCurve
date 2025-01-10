@@ -1,5 +1,5 @@
-using CurvesLibrary;
 using MathNet.Numerics;
+using PolyCurve;
 
 namespace Tests
 {
