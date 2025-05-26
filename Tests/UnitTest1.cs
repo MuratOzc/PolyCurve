@@ -8,7 +8,7 @@ namespace Tests
         protected Curve curve;
         protected const double Tolerance = 0.15;
 
-        protected void AssertPointsEqual(IEnumerable<(double X, double Y)> actual, IEnumerable<(double X, double Y)> expected)
+        protected void AssertPointsEqual(IEnumerable<Point2D> actual, IEnumerable<Point2D> expected)
         {
             var actualList = actual.OrderBy(p => p.X).ToList();
             var expectedList = expected.OrderBy(p => p.X).ToList();
@@ -19,7 +19,7 @@ namespace Tests
             }
         }
 
-        protected void AssertPointEqual((double X, double Y) actual, (double X, double Y) expected)
+        protected void AssertPointEqual(Point2D actual, Point2D expected)
         {
             Assert.That(actual.X, Is.EqualTo(expected.X).Within(Tolerance));
             Assert.That(actual.Y, Is.EqualTo(expected.Y).Within(Tolerance));
@@ -55,13 +55,13 @@ namespace Tests
             Func<double, double> sinFunc = x => 5 * Math.Sin(x) + 2;
             double[] xValues = Generate.LinearSpaced(100, 0, 2 * Math.PI);
             double[] yValues = xValues.Select(sinFunc).ToArray();
-            sinusoidalCurve = new Curve(xValues, yValues, polynomialDegree: 10);
+            sinusoidalCurve = new Curve(xValues, yValues, degree: 10);
 
             // Exponential curve: y = 2^x
             Func<double, double> expFunc = x => Math.Pow(2, x);
             xValues = Generate.LinearSpaced(100, 0, 5);
             yValues = xValues.Select(expFunc).ToArray();
-            exponentialCurve = new Curve(xValues, yValues, polynomialDegree: 10);
+            exponentialCurve = new Curve(xValues, yValues, degree: 10);
         }
 
         [Test]
@@ -80,9 +80,9 @@ namespace Tests
         {
             Assert.Multiple(() =>
             {
-                Assert.That(polynomialCurve.CalculateArea(-3, 11), Is.EqualTo(2561.2).Within(Tolerance), "Polynomial curve area failed");
-                Assert.That(sinusoidalCurve.CalculateArea(0, 2 * Math.PI), Is.EqualTo(21.6224).Within(Tolerance), "Sinusoidal curve area failed");
-                Assert.That(exponentialCurve.CalculateArea(0, 5), Is.EqualTo(44.724).Within(Tolerance), "Exponential curve area failed");
+                Assert.That(polynomialCurve.CalculateAreaUnderCurve(-3, 11), Is.EqualTo(2561.2).Within(Tolerance), "Polynomial curve area failed");
+                Assert.That(sinusoidalCurve.CalculateAreaUnderCurve(0, 2 * Math.PI), Is.EqualTo(21.6224).Within(Tolerance), "Sinusoidal curve area failed");
+                Assert.That(exponentialCurve.CalculateAreaUnderCurve(0, 5), Is.EqualTo(44.724).Within(Tolerance), "Exponential curve area failed");
             });
         }
 
@@ -91,9 +91,9 @@ namespace Tests
         {
             Assert.Multiple(() =>
             {
-                Assert.That(polynomialCurve.CalculateIntegral(-3, 11), Is.EqualTo(1178.8).Within(Tolerance), "Polynomial curve integral failed");
-                Assert.That(sinusoidalCurve.CalculateIntegral(0, 2 * Math.PI), Is.EqualTo(12.5664).Within(Tolerance), "Sinusoidal curve integral failed");
-                Assert.That(exponentialCurve.CalculateIntegral(0, 5), Is.EqualTo(44.724).Within(Tolerance), "Exponential curve integral failed");
+                Assert.That(polynomialCurve.CalculateDefiniteIntegral(-3, 11), Is.EqualTo(1178.8).Within(Tolerance), "Polynomial curve integral failed");
+                Assert.That(sinusoidalCurve.CalculateDefiniteIntegral(0, 2 * Math.PI), Is.EqualTo(12.5664).Within(Tolerance), "Sinusoidal curve integral failed");
+                Assert.That(exponentialCurve.CalculateDefiniteIntegral(0, 5), Is.EqualTo(44.724).Within(Tolerance), "Exponential curve integral failed");
             });
         }
 
@@ -102,9 +102,9 @@ namespace Tests
         {
             Assert.Multiple(() =>
             {
-                Assert.That(polynomialCurve.CalculateCurvature(0), Is.EqualTo(0.000457596).Within(Tolerance), "Polynomial curve curvature failed");
-                Assert.That(sinusoidalCurve.CalculateCurvature(Math.PI / 2), Is.EqualTo(5).Within(Tolerance), "Sinusoidal curve curvature failed");
-                Assert.That(exponentialCurve.CalculateCurvature(1), Is.EqualTo(0.1924).Within(Tolerance), "Exponential curve curvature failed");
+                Assert.That(polynomialCurve.CalculateCurvatureAt(0), Is.EqualTo(0.000457596).Within(Tolerance), "Polynomial curve curvature failed");
+                Assert.That(sinusoidalCurve.CalculateCurvatureAt(Math.PI / 2), Is.EqualTo(5).Within(Tolerance), "Sinusoidal curve curvature failed");
+                Assert.That(exponentialCurve.CalculateCurvatureAt(1), Is.EqualTo(0.1924).Within(Tolerance), "Exponential curve curvature failed");
             });
         }
 
@@ -113,9 +113,10 @@ namespace Tests
         {
             Assert.Multiple(() =>
             {
-                AssertPointsEqual(polynomialCurve.FindInflectionPoints(), new[] { (1.55051, -66.3837), (6.44949, 90.3837) });
-                AssertPointsEqual(sinusoidalCurve.FindInflectionPoints(), new[] { (0, 2.0), (Math.PI, 2.0), (2 * Math.PI, 2.0) });
+                AssertPointsEqual(polynomialCurve.FindInflectionPoints(), [new Point2D(1.55051, -66.3837), new Point2D(6.44949, 90.3837)]);
+                AssertPointsEqual(sinusoidalCurve.FindInflectionPoints(), [new Point2D(0, 2.0), new Point2D(Math.PI, 2.0), new Point2D(2 * Math.PI, 2.0)]);
                 Assert.That(exponentialCurve.FindInflectionPoints(), Is.Empty, "Exponential curve inflection points failed");
+
             });
         }
 
@@ -124,8 +125,8 @@ namespace Tests
         {
             Assert.Multiple(() =>
             {
-                AssertPointsEqual(polynomialCurve.FindLocalExtrema(), new[] { (-0.44949, -271.15), (4.4495, 199.15), (8, 0) });
-                AssertPointsEqual(sinusoidalCurve.FindLocalExtrema(), new[] { (Math.PI / 2, 7.0), (3 * Math.PI / 2, -3) });
+                AssertPointsEqual(polynomialCurve.FindLocalExtrema(), new[] { new Point2D(-0.44949, -271.15), new Point2D(4.4495, 199.15), new Point2D(8, 0) });
+                AssertPointsEqual(sinusoidalCurve.FindLocalExtrema(), new[] { new Point2D(Math.PI / 2, 7.0), new Point2D(3 * Math.PI / 2, -3) });
                 Assert.That(exponentialCurve.FindLocalExtrema(), Is.Empty, "Exponential curve local extrema failed");
             });
         }
@@ -135,9 +136,9 @@ namespace Tests
         {
             Assert.Multiple(() =>
             {
-                AssertPointEqual(polynomialCurve.FindMaximum(), (11.0, 1053.0));
-                AssertPointEqual(sinusoidalCurve.FindMaximum(), (Math.PI / 2, 7));
-                AssertPointEqual(exponentialCurve.FindMaximum(), (5, 32));
+                AssertPointEqual(polynomialCurve.FindMaximum(), new Point2D(11.0, 1053.0));
+                AssertPointEqual(sinusoidalCurve.FindMaximum(), new Point2D(Math.PI / 2, 7.0));
+                AssertPointEqual(exponentialCurve.FindMaximum(), new Point2D(5, 32.0));
             });
         }
 
@@ -146,9 +147,14 @@ namespace Tests
         {
             Assert.Multiple(() =>
             {
-                AssertPointEqual(polynomialCurve.FindMinimum(), (-0.44949, -271.15));
-                AssertPointEqual(sinusoidalCurve.FindMinimum(), (3 * Math.PI / 2, -3));
-                AssertPointEqual(exponentialCurve.FindMinimum(), (0, 1));
+                //AssertPointEqual(polynomialCurve.FindMinimum(), (-0.44949, -271.15));
+                //AssertPointEqual(sinusoidalCurve.FindMinimum(), (3 * Math.PI / 2, -3));
+                //AssertPointEqual(exponentialCurve.FindMinimum(), (0, 1));
+
+                AssertPointEqual(polynomialCurve.FindMinimum(), new Point2D(-0.44949, -271.15));
+                AssertPointEqual(sinusoidalCurve.FindMinimum(), new Point2D(3 * Math.PI / 2, -3));
+                AssertPointEqual(exponentialCurve.FindMinimum(), new Point2D(0, 1));
+
             });
         }
 
@@ -168,9 +174,9 @@ namespace Tests
         {
             Assert.Multiple(() =>
             {
-                AssertArraysEqual(polynomialCurve.FindXForY(100), new[] { -2.2263, 2.7659, 6.3370, 9.1234 });
-                AssertArraysEqual(sinusoidalCurve.FindXForY(4), new[] { 0.4636, 2.6780 });
-                AssertArraysEqual(exponentialCurve.FindXForY(8), new[] { 3.0 });
+                AssertArraysEqual(polynomialCurve.FindXValuesForY(100), new[] { -2.2263, 2.7659, 6.3370, 9.1234 });
+                AssertArraysEqual(sinusoidalCurve.FindXValuesForY(4), new[] { 0.4636, 2.6780 });
+                AssertArraysEqual(exponentialCurve.FindXValuesForY(8), new[] { 3.0 });
             });
         }
 
@@ -179,9 +185,9 @@ namespace Tests
         {
             Assert.Multiple(() =>
             {
-                Assert.That(polynomialCurve.Interpolate(5), Is.EqualTo(189.0).Within(Tolerance), "Polynomial curve interpolation failed");
-                Assert.That(sinusoidalCurve.Interpolate(Math.PI / 4), Is.EqualTo(5.5355).Within(Tolerance), "Sinusoidal curve interpolation failed");
-                Assert.That(exponentialCurve.Interpolate(2), Is.EqualTo(4.0).Within(Tolerance), "Exponential curve interpolation failed");
+                Assert.That(polynomialCurve.EvaluateAt(5).Y, Is.EqualTo(189.0).Within(Tolerance), "Polynomial curve interpolation failed");
+                Assert.That(sinusoidalCurve.EvaluateAt(Math.PI / 4).Y, Is.EqualTo(5.5355).Within(Tolerance), "Sinusoidal curve interpolation failed");
+                Assert.That(exponentialCurve.EvaluateAt(2).Y, Is.EqualTo(4.0).Within(Tolerance), "Exponential curve interpolation failed");
             });
         }
 
@@ -190,14 +196,14 @@ namespace Tests
         {
             Assert.Multiple(() =>
             {
-                var polyNormal = polynomialCurve.NormalLine(5);
-                AssertArraysEqual(polyNormal.PolynomialCoeffs, new[] { 188.861, 0.0277778 });
+                var polyNormal = polynomialCurve.GetNormalLineAt(5);
+                AssertArraysEqual(polyNormal.PolynomialCoeffs, [188.861, 0.0277778]);
 
-                var sinNormal = sinusoidalCurve.NormalLine(Math.PI / 4);
-                AssertArraysEqual(sinNormal.PolynomialCoeffs, new[] { 5.75768, -0.282843 });
+                var sinNormal = sinusoidalCurve.GetNormalLineAt(Math.PI / 4);
+                AssertArraysEqual(sinNormal.PolynomialCoeffs, [5.75768, -0.282843]);
 
-                var expNormal = exponentialCurve.NormalLine(2);
-                AssertArraysEqual(expNormal.PolynomialCoeffs, new[] { 4.72135, -0.360674 });
+                var expNormal = exponentialCurve.GetNormalLineAt(2);
+                AssertArraysEqual(expNormal.PolynomialCoeffs, [4.72135, -0.360674]);
             });
         }
 
@@ -206,14 +212,14 @@ namespace Tests
         {
             Assert.Multiple(() =>
             {
-                var polyTangent = polynomialCurve.TangentLine(5);
-                AssertArraysEqual(polyTangent.PolynomialCoeffs, new[] { 369.0, -36.0 });
+                var polyTangent = polynomialCurve.GetTangentLineAt(5);
+                AssertArraysEqual(polyTangent.PolynomialCoeffs, [369.0, -36.0]);
 
-                var sinTangent = sinusoidalCurve.TangentLine(Math.PI / 4);
-                AssertArraysEqual(sinTangent.PolynomialCoeffs, new[] { 2.75873, 3.53553 });
+                var sinTangent = sinusoidalCurve.GetTangentLineAt(Math.PI / 4);
+                AssertArraysEqual(sinTangent.PolynomialCoeffs, [2.75873, 3.53553]);
 
-                var expTangent = exponentialCurve.TangentLine(2);
-                AssertArraysEqual(expTangent.PolynomialCoeffs, new[] { -1.54518, 2.77259 });
+                var expTangent = exponentialCurve.GetTangentLineAt(2);
+                AssertArraysEqual(expTangent.PolynomialCoeffs, [-1.54518, 2.77259]);
             });
         }
 
@@ -222,15 +228,15 @@ namespace Tests
         {
             Assert.Multiple(() =>
             {
-                var polyDerivative = polynomialCurve.DerivativeCurve();
+                var polyDerivative = polynomialCurve.GetDerivative();
                 AssertArraysEqual(polyDerivative.PolynomialCoeffs, new[] { 64.0, 120, -48, 4 });
 
-                var sinDerivative = sinusoidalCurve.DerivativeCurve();
-                Assert.That(sinDerivative.Interpolate(Math.PI / 2), Is.EqualTo(0).Within(Tolerance), "Sinusoidal derivative at PI/2 failed");
-                Assert.That(sinDerivative.Interpolate(0), Is.EqualTo(5).Within(Tolerance), "Sinusoidal derivative at 0 failed");
+                var sinDerivative = sinusoidalCurve.GetDerivative();
+                Assert.That(sinDerivative.EvaluateAt(Math.PI / 2).Y, Is.EqualTo(0).Within(Tolerance), "Sinusoidal derivative at PI/2 failed");
+                Assert.That(sinDerivative.EvaluateAt(0).Y, Is.EqualTo(5).Within(Tolerance), "Sinusoidal derivative at 0 failed");
 
-                var expDerivative = exponentialCurve.DerivativeCurve();
-                Assert.That(expDerivative.Interpolate(1), Is.EqualTo(1.3863).Within(Tolerance), "Exponential derivative failed");
+                var expDerivative = exponentialCurve.GetDerivative();
+                Assert.That(expDerivative.EvaluateAt(1).Y, Is.EqualTo(1.3863).Within(Tolerance), "Exponential derivative failed");
             });
         }
 
@@ -239,14 +245,14 @@ namespace Tests
         {
             Assert.Multiple(() =>
             {
-                var polyIntegral = polynomialCurve.IntegralCurve();
-                Assert.That(polyIntegral.Interpolate(5), Is.EqualTo(145).Within(Tolerance), "Polynomial integral curve failed");
+                var polyIntegral = polynomialCurve.GetAntiderivative();
+                Assert.That(polyIntegral.EvaluateAt(5).Y, Is.EqualTo(145).Within(Tolerance), "Polynomial integral curve failed");
 
-                var sinIntegral = sinusoidalCurve.IntegralCurve(c: -5);
-                Assert.That(sinIntegral.Interpolate(Math.PI), Is.EqualTo(5 + 2 * Math.PI).Within(Tolerance), "Sinusoidal integral curve failed");
+                var sinIntegral = sinusoidalCurve.GetAntiderivative(integrationConstant: -5);
+                Assert.That(sinIntegral.EvaluateAt(Math.PI).Y, Is.EqualTo(5 + 2 * Math.PI).Within(Tolerance), "Sinusoidal integral curve failed");
 
-                var expIntegral = exponentialCurve.IntegralCurve(c: 1.4427);
-                Assert.That(expIntegral.Interpolate(1), Is.EqualTo(2.88539).Within(Tolerance), "Exponential integral curve failed");
+                var expIntegral = exponentialCurve.GetAntiderivative(integrationConstant: 1.4427);
+                Assert.That(expIntegral.EvaluateAt(1).Y, Is.EqualTo(2.88539).Within(Tolerance), "Exponential integral curve failed");
             });
         }
 
@@ -255,17 +261,17 @@ namespace Tests
         {
             Assert.Multiple(() =>
             {
-                var (polyLeft, polyRight) = polynomialCurve.SplitCurve(4);
-                Assert.That(polyLeft.XMax, Is.EqualTo(4).Within(Tolerance), "Polynomial left split failed");
-                Assert.That(polyRight.XMin, Is.EqualTo(4).Within(Tolerance), "Polynomial right split failed");
+                Curve[] polyCurves = polynomialCurve.SplitCurve([4]).ToArray();
+                Assert.That(polyCurves[0].XMax, Is.EqualTo(4).Within(Tolerance), "Polynomial left split failed");
+                Assert.That(polyCurves[1].XMin, Is.EqualTo(4).Within(Tolerance), "Polynomial right split failed");
 
-                var (sinLeft, sinRight) = sinusoidalCurve.SplitCurve(Math.PI);
-                Assert.That(sinLeft.XMax, Is.EqualTo(Math.PI).Within(Tolerance), "Sinusoidal left split failed");
-                Assert.That(sinRight.XMin, Is.EqualTo(Math.PI).Within(Tolerance), "Sinusoidal right split failed");
+                Curve[] sinCurves = sinusoidalCurve.SplitCurve([Math.PI]).ToArray();
+                Assert.That(sinCurves[0].XMax, Is.EqualTo(Math.PI).Within(Tolerance), "Sinusoidal left split failed");
+                Assert.That(sinCurves[1].XMin, Is.EqualTo(Math.PI).Within(Tolerance), "Sinusoidal right split failed");
 
-                var (expLeft, expRight) = exponentialCurve.SplitCurve(2.5);
-                Assert.That(expLeft.XMax, Is.EqualTo(2.5).Within(Tolerance), "Exponential left split failed");
-                Assert.That(expRight.XMin, Is.EqualTo(2.5).Within(Tolerance), "Exponential right split failed");
+                var expCurves = exponentialCurve.SplitCurve([2.5]).ToArray();
+                Assert.That(expCurves[0].XMax, Is.EqualTo(2.5).Within(Tolerance), "Exponential left split failed");
+                Assert.That(expCurves[1].XMin, Is.EqualTo(2.5).Within(Tolerance), "Exponential right split failed");
             });
         }
 
@@ -295,11 +301,11 @@ namespace Tests
 
                 // Right shift (horizontal shift right)
                 var shiftRightCurve = curve1 >> 2;
-                Assert.That(shiftRightCurve.Interpolate(3), Is.EqualTo(curve1.Interpolate(1)).Within(Tolerance));
+                Assert.That(shiftRightCurve.EvaluateAt(3).Y, Is.EqualTo(curve1.EvaluateAt(1).Y).Within(Tolerance));
 
                 // Left shift (horizontal shift left)
                 var shiftLeftCurve = curve1 << 2;
-                Assert.That(shiftLeftCurve.Interpolate(1), Is.EqualTo(curve1.Interpolate(3)).Within(Tolerance));
+                Assert.That(shiftLeftCurve.EvaluateAt(1).Y, Is.EqualTo(curve1.EvaluateAt(3).Y).Within(Tolerance));
             });
         }
 
@@ -309,27 +315,15 @@ namespace Tests
             var curve1 = new Curve(new double[] { 0, 1 }, 0, 10); // y = x
             var curve2 = new Curve(new double[] { 2, -1 }, 0, 10); // y = 2 - x
 
-            var intersections = curve1.FindIntersections(curve2);
-            var expected = new List<(double X, double Y)>
-            {
-                (1, 1),
-            };
+            var intersections = curve1.FindIntersectionsWith(curve2);
+            Point2D[] expected = [new Point2D(1, 1)];
 
-            var sinExpoIntersections = sinusoidalCurve.FindIntersections(exponentialCurve);
-            var sinExpoExpected = new List<(double X, double Y)>
-            {
-                (2.41344, 5.32743),
-            };
-            var sinPolyIntersections = sinusoidalCurve.FindIntersections(polynomialCurve);
-            var sinPolyExpected = new List<(double X, double Y)>
-            {
-                (2.04495, 6.44783),
-            };
-            var expoPolyIntersections = exponentialCurve.FindIntersections(polynomialCurve);
-            var expoPolyExpected = new List<(double X, double Y)>
-            {
-                (2.0284, 4.07952),
-            };
+            var sinExpoIntersections = sinusoidalCurve.FindIntersectionsWith(exponentialCurve);
+            Point2D[] sinExpoExpected = [new Point2D(2.41344, 5.32743)];
+            var sinPolyIntersections = sinusoidalCurve.FindIntersectionsWith(polynomialCurve);
+            Point2D[] sinPolyExpected = [new Point2D(2.04495, 6.44783)];
+            var expoPolyIntersections = exponentialCurve.FindIntersectionsWith(polynomialCurve);
+            Point2D[] expoPolyExpected = [new Point2D(2.0284, 4.07952)];
 
             Assert.Multiple(() =>
             {
@@ -343,8 +337,8 @@ namespace Tests
         [Test]
         public void TestToString()
         {
-            var curve = new Curve(new double[] { 1, -2, 3, -4 }, 0, 5);
-            string expected = "1x^0 + -2x^1 + 3x^2 + -4x^3";
+            var curve = new Curve(new double[] { 1, -2, 0, -4 }, 0, 5);
+            string expected = "1x^0 - 2x^1 + 0x^2 - 4x^3 from 0 to 5";
             Assert.That(curve.ToString(), Is.EqualTo(expected));
         }
     }
