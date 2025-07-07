@@ -8,6 +8,7 @@ A lightweight .NET library for polynomial curve generation, manipulation, and an
 - Evaluation: Evaluate the polynomial at any x-value.
 - Analysis: Find roots, local/global minima and maxima, inflection points, tangents, normals, etc.
 - Integration & Differentiation: Automatically compute derivative and antiderivative curves.
+- Domain Operations: Temporarily change curve bounds.
 - Operators: Supports custom operators (+, -, *, /, <<, >>) for polynomial arithmetic and horizontal shifts.
 - Statistical & Fitting Metrics: Compute mean, variance, standard deviation, centroid, R², RMSE, and more.
 
@@ -35,6 +36,10 @@ Console.WriteLine($"Global Maximum: {max}");
 
 var roots = polynomialCurve.FindRoots();
 Console.WriteLine($"Roots: {string.Join(", ", roots)}");
+
+var extendedCurve = polynomialCurve.WithBounds(-10, 20);
+var moreRoots = extendedCurve.FindRoots();
+Console.WriteLine($"Roots: {string.Join(", ", moreRoots)}");
 ```
 
 ## Contributing

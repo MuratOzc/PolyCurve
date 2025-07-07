@@ -1,12 +1,10 @@
-using MathNet.Numerics;
 using PolyCurve;
 
 namespace Tests
 {
     public abstract class BaseCurveTests
     {
-        protected Curve curve;
-        protected const double Tolerance = 0.15;
+        protected const double Tolerance = 0.15; // Some methods can handle much smalletr tolerances, but this is a good default for most tests
 
         protected void AssertPointsEqual(IEnumerable<Point2D> actual, IEnumerable<Point2D> expected)
         {
@@ -35,6 +33,21 @@ namespace Tests
                 Assert.That(actualList[i], Is.EqualTo(expectedList[i]).Within(Tolerance));
             }
         }
+
+        protected static double[] GenerateLinearSpaced(int count, double start, double end)
+        {
+            if (count < 2) throw new ArgumentException("Count must be at least 2");
+
+            double[] result = new double[count];
+            double step = (end - start) / (count - 1);
+
+            for (int i = 0; i < count; i++)
+            {
+                result[i] = start + i * step;
+            }
+
+            return result;
+        }
     }
 
     [TestFixture]
@@ -43,6 +56,7 @@ namespace Tests
         private Curve polynomialCurve;
         private Curve sinusoidalCurve;
         private Curve exponentialCurve;
+        private Curve testCurve;
 
         [SetUp]
         public void Setup()
@@ -53,15 +67,18 @@ namespace Tests
 
             // Sinusoidal curve: y = 5 * sin(x) + 2
             Func<double, double> sinFunc = x => 5 * Math.Sin(x) + 2;
-            double[] xValues = Generate.LinearSpaced(100, 0, 2 * Math.PI);
+            double[] xValues = GenerateLinearSpaced(100, 0, 2 * Math.PI);
             double[] yValues = xValues.Select(sinFunc).ToArray();
             sinusoidalCurve = new Curve(xValues, yValues, degree: 10);
 
             // Exponential curve: y = 2^x
             Func<double, double> expFunc = x => Math.Pow(2, x);
-            xValues = Generate.LinearSpaced(100, 0, 5);
+            xValues = GenerateLinearSpaced(100, 0, 5);
             yValues = xValues.Select(expFunc).ToArray();
             exponentialCurve = new Curve(xValues, yValues, degree: 10);
+
+            // Test curve for domain operations: y = x^2 - 4 (roots at -2 and 2)
+            testCurve = new Curve(new double[] { -4, 0, 1 }, -3, 3);
         }
 
         [Test]
@@ -340,6 +357,214 @@ namespace Tests
             var curve = new Curve(new double[] { 1, -2, 0, -4 }, 0, 5);
             string expected = "1x^0 - 2x^1 + 0x^2 - 4x^3 from 0 to 5";
             Assert.That(curve.ToString(), Is.EqualTo(expected));
+        }
+
+        // NEW DOMAIN OPERATION TESTS BELOW
+
+        [Test]
+        public void TestWithBounds_BasicFunctionality()
+        {
+            var newCurve = testCurve.WithBounds(-5, 5);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(newCurve.XMin, Is.EqualTo(-5), "New minimum bound not set correctly");
+                Assert.That(newCurve.XMax, Is.EqualTo(5), "New maximum bound not set correctly");
+                Assert.That(newCurve.PolynomialDegree, Is.EqualTo(testCurve.PolynomialDegree), "Polynomial degree should be unchanged");
+                AssertArraysEqual(newCurve.PolynomialCoeffs, testCurve.PolynomialCoeffs);
+            });
+        }
+
+        [Test]
+        public void TestWithBounds_OriginalUnchanged()
+        {
+            double originalMin = testCurve.XMin;
+            double originalMax = testCurve.XMax;
+
+            var newCurve = testCurve.WithBounds(-10, 10);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(testCurve.XMin, Is.EqualTo(originalMin), "Original curve minimum bound changed");
+                Assert.That(testCurve.XMax, Is.EqualTo(originalMax), "Original curve maximum bound changed");
+                Assert.That(newCurve.XMin, Is.EqualTo(-10), "New curve minimum bound incorrect");
+                Assert.That(newCurve.XMax, Is.EqualTo(10), "New curve maximum bound incorrect");
+            });
+        }
+
+        [Test]
+        public void TestWithBounds_InvalidBounds()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.Throws<ArgumentException>(() => testCurve.WithBounds(5, 3), "Should throw when min >= max");
+                Assert.Throws<ArgumentException>(() => testCurve.WithBounds(5, 5), "Should throw when min == max");
+            });
+        }
+
+        [Test]
+        public void TestWithExpandedBounds_SymmetricExpansion()
+        {
+            var expandedCurve = testCurve.WithExpandedBounds(2, 2);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(expandedCurve.XMin, Is.EqualTo(-5), "Left expansion incorrect"); // -3 - 2 = -5
+                Assert.That(expandedCurve.XMax, Is.EqualTo(5), "Right expansion incorrect");  // 3 + 2 = 5
+                AssertArraysEqual(expandedCurve.PolynomialCoeffs, testCurve.PolynomialCoeffs);
+            });
+        }
+
+        [Test]
+        public void TestWithExpandedBounds_AsymmetricExpansion()
+        {
+            var expandedCurve = testCurve.WithExpandedBounds(1, 3);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(expandedCurve.XMin, Is.EqualTo(-4), "Left expansion incorrect"); // -3 - 1 = -4
+                Assert.That(expandedCurve.XMax, Is.EqualTo(6), "Right expansion incorrect");  // 3 + 3 = 6
+            });
+        }
+
+        [Test]
+        public void TestWithExpandedBounds_Contraction()
+        {
+            var contractedCurve = testCurve.WithExpandedBounds(-1, -1);
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(contractedCurve.XMin, Is.EqualTo(-2), "Left contraction incorrect"); // -3 - (-1) = -2
+                Assert.That(contractedCurve.XMax, Is.EqualTo(2), "Right contraction incorrect");  // 3 + (-1) = 2
+            });
+        }
+
+        [Test]
+        public void TestWithExpandedBounds_InvalidResult()
+        {
+            Assert.Throws<ArgumentException>(() => testCurve.WithExpandedBounds(-5, -5),
+                "Should throw when resulting bounds would be invalid");
+        }
+
+        [Test]
+        public void TestDomainOperations_FindMoreRoots()
+        {
+            // Original domain [-3, 3] should find both roots at -2 and 2
+            var originalRoots = testCurve.FindRoots().ToList();
+
+            // Contracted domain [-1, 1] should find no roots
+            var contractedRoots = testCurve.WithBounds(-1, 1).FindRoots().ToList();
+
+            // Expanded domain should still find the same roots
+            var expandedRoots = testCurve.WithExpandedBounds(2, 2).FindRoots().ToList();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(originalRoots.Count, Is.EqualTo(2), "Should find 2 roots in original domain");
+                Assert.That(contractedRoots.Count, Is.EqualTo(0), "Should find no roots in contracted domain");
+                Assert.That(expandedRoots.Count, Is.EqualTo(2), "Should find same roots in expanded domain");
+
+                // Check root values
+                AssertArraysEqual(originalRoots.OrderBy(r => r), new[] { -2.0, 2.0 });
+                AssertArraysEqual(expandedRoots.OrderBy(r => r), new[] { -2.0, 2.0 });
+            });
+        }
+
+        [Test]
+        public void TestDomainOperations_ExtremaAnalysis()
+        {
+            // Test curve y = x^2 - 4 has minimum at (0, -4)
+            var originalExtrema = testCurve.FindLocalExtrema().ToList();
+            var originalMin = testCurve.FindMinimum();
+
+            // Contract domain to exclude the minimum
+            var contractedExtrema = testCurve.WithBounds(1, 3).FindLocalExtrema().ToList();
+            var contractedMin = testCurve.WithBounds(1, 3).FindMinimum();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(originalExtrema.Count, Is.EqualTo(1), "Should find 1 extremum in original domain");
+                AssertPointEqual(originalMin, new Point2D(0, -4));
+
+                Assert.That(contractedExtrema.Count, Is.EqualTo(0), "Should find no local extrema in contracted domain");
+                AssertPointEqual(contractedMin, new Point2D(1, -3)); // Minimum at left boundary
+            });
+        }
+
+        [Test]
+        public void TestDomainOperations_Integration()
+        {
+            // Test that integration works correctly with different bounds
+            double originalIntegral = testCurve.CalculateDefiniteIntegral();
+            double expandedIntegral = testCurve.WithExpandedBounds(1, 1).CalculateDefiniteIntegral();
+            double contractedIntegral = testCurve.WithBounds(-1, 1).CalculateDefiniteIntegral();
+
+            // For y = x^2 - 4, integral from -1 to 1 = [x^3/3 - 4x] = (1/3 - 4) - (-1/3 + 4) = -22/3
+            double expectedContracted = -22.0 / 3.0;
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(originalIntegral, Is.Not.EqualTo(expandedIntegral), "Expanded integral should differ");
+                Assert.That(contractedIntegral, Is.EqualTo(expectedContracted).Within(Tolerance), "Contracted integral incorrect");
+            });
+        }
+
+        [Test]
+        public void TestDomainOperations_ChainedOperations()
+        {
+            // Test chaining operations with temporary bounds
+            var chainedResults = testCurve
+                .WithExpandedBounds(2, 2)
+                .FindLocalExtrema()
+                .Where(p => p.Y < 0)
+                .ToList();
+
+            var directResults = testCurve.FindLocalExtrema().Where(p => p.Y < 0).ToList();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(chainedResults.Count, Is.EqualTo(directResults.Count), "Chained results should match direct results");
+                if (chainedResults.Any() && directResults.Any())
+                {
+                    AssertPointEqual(chainedResults.First(), directResults.First());
+                }
+            });
+        }
+
+        [Test]
+        public void TestDomainOperations_Statistics()
+        {
+            var originalStats = testCurve.GetStatistics();
+            var expandedStats = testCurve.WithExpandedBounds(1, 1).GetStatistics();
+            var contractedStats = testCurve.WithBounds(-1, 1).GetStatistics();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(originalStats.Mean, Is.Not.EqualTo(expandedStats.Mean), "Expanded stats should differ");
+                Assert.That(originalStats.Mean, Is.Not.EqualTo(contractedStats.Mean), "Contracted stats should differ");
+                Assert.That(expandedStats.CentroidPoint.X, Is.EqualTo(0).Within(Tolerance), "Centroid should be at x=0 for symmetric curve");
+            });
+        }
+
+        [Test]
+        public void TestDomainOperations_Intersections()
+        {
+            // Create a line y = 0 (horizontal line through roots)
+            var horizontalLine = new Curve(new double[] { 0 }, -10, 10);
+
+            // Find intersections with different domain bounds
+            var originalIntersections = testCurve.FindIntersectionsWith(horizontalLine).ToList();
+            var expandedIntersections = testCurve.WithBounds(-5, 5)
+                .FindIntersectionsWith(horizontalLine.WithBounds(-5, 5)).ToList();
+            var contractedIntersections = testCurve.WithBounds(-1, 1)
+                .FindIntersectionsWith(horizontalLine.WithBounds(-1, 1)).ToList();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(originalIntersections.Count, Is.EqualTo(2), "Should find 2 intersections in original domain");
+                Assert.That(expandedIntersections.Count, Is.EqualTo(2), "Should find 2 intersections in expanded domain");
+                Assert.That(contractedIntersections.Count, Is.EqualTo(0), "Should find no intersections in contracted domain");
+            });
         }
     }
 }

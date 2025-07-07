@@ -212,6 +212,73 @@ namespace PolyCurve
 
         #endregion
 
+        #region Domain Operations
+
+        /// <summary>
+        /// Creates a new curve with the same polynomial but different domain bounds.
+        /// Useful for temporary operations without modifying the original curve.
+        /// The polynomial equation remains identical, only the valid domain changes.
+        /// </summary>
+        /// <param name="newXMin">New minimum bound for the curve domain.</param>
+        /// <param name="newXMax">New maximum bound for the curve domain.</param>
+        /// <returns>A new Curve object with the same polynomial but different bounds.</returns>
+        /// <exception cref="ArgumentException">Thrown when newXMin is greater than or equal to newXMax.</exception>
+        /// <example>
+        /// <code>
+        /// var originalCurve = new Curve(coeffs, -5, 5);
+        /// var extendedCurve = originalCurve.WithBounds(-10, 10);
+        /// var restrictedCurve = originalCurve.WithBounds(-2, 3);
+        /// 
+        /// // Find roots in extended domain
+        /// var moreRoots = extendedCurve.FindRoots();
+        /// 
+        /// // Find extrema in restricted domain  
+        /// var localExtrema = restrictedCurve.FindLocalExtrema();
+        /// </code>
+        /// </example>
+        public Curve WithBounds(double newXMin, double newXMax)
+        {
+            if (newXMin >= newXMax)
+                throw new ArgumentException("Minimum bound must be less than maximum bound");
+
+            return new Curve(PolynomialCoeffs.ToArray(), newXMin, newXMax);
+        }
+
+        /// <summary>
+        /// Creates a new curve with expanded bounds by the specified amounts from the current domain.
+        /// Positive values expand the domain, negative values shrink it.
+        /// </summary>
+        /// <param name="expandLeft">Amount to expand the left bound. Positive expands left, negative shrinks from left.</param>
+        /// <param name="expandRight">Amount to expand the right bound. Positive expands right, negative shrinks from right.</param>
+        /// <returns>A new Curve object with adjusted bounds.</returns>
+        /// <exception cref="ArgumentException">Thrown when the resulting bounds would be invalid (min >= max).</exception>
+        /// <example>
+        /// <code>
+        /// var originalCurve = new Curve(coeffs, -5, 5); // Domain: [-5, 5]
+        /// 
+        /// // Expand 3 units on each side: [-8, 8]
+        /// var expandedCurve = originalCurve.WithExpandedBounds(3, 3);
+        /// 
+        /// // Expand left by 2, shrink right by 1: [-7, 4]  
+        /// var asymmetricCurve = originalCurve.WithExpandedBounds(2, -1);
+        /// 
+        /// // Find more roots in expanded domain
+        /// var extendedRoots = expandedCurve.FindRoots();
+        /// </code>
+        /// </example>
+        public Curve WithExpandedBounds(double expandLeft, double expandRight)
+        {
+            double newXMin = XMin - expandLeft;
+            double newXMax = XMax + expandRight;
+
+            if (newXMin >= newXMax)
+                throw new ArgumentException($"Resulting bounds would be invalid: [{newXMin}, {newXMax}]. Minimum must be less than maximum.");
+
+            return new Curve(PolynomialCoeffs.ToArray(), newXMin, newXMax);
+        }
+
+        #endregion
+
         #region Extrema and Critical Points
 
         /// <summary>
