@@ -849,6 +849,9 @@ namespace PolyCurve
         /// </example>
         public IEnumerable<Point2D> FindIntersectionsWith(Curve otherCurve)
         {
+            if (otherCurve == null)
+                throw new ArgumentNullException(nameof(otherCurve));
+
             // Find overlapping domain
             double overlapMin = Math.Max(XMin, otherCurve.XMin);
             double overlapMax = Math.Min(XMax, otherCurve.XMax);
@@ -875,23 +878,23 @@ namespace PolyCurve
         /// <summary>
         /// Interpolates this curve with another curve by sampling points and creating a new fitted curve.
         /// This method handles curves with different domains gracefully by sampling corresponding relative positions.
+        /// Supports extrapolation when interpolationRatio is outside [0,1].
         /// </summary>
         /// <param name="otherCurve">The target curve to interpolate towards. Must not be null.</param>
-        /// <param name="interpolationRatio">The interpolation factor between 0 and 1. 0 returns this curve, 1 returns the other curve.</param>
+        /// <param name="interpolationRatio">The interpolation factor. 0 returns this curve, 1 returns the other curve. Values outside [0,1] extrapolate.</param>
         /// <param name="samplePoints">Number of points to sample for creating the interpolated curve. Defaults to 50.</param>
         /// <returns>A new Curve object representing the interpolated curve with polynomial degree based on the input curves.</returns>
         /// <exception cref="ArgumentNullException">Thrown when otherCurve is null.</exception>
-        /// <exception cref="ArgumentException">Thrown when interpolationRatio is not between 0 and 1.</exception>
         /// <example>
         /// <code>
         /// var midway = curve1.InterpolateWith(curve2, 0.5); // 50% between curves
-        /// var closer_to_curve2 = curve1.InterpolateWith(curve2, 0.8); // 80% towards curve2
+        /// var extrapolated = curve1.InterpolateWith(curve2, 1.5); // 150% - extrapolates beyond curve2
         /// </code>
         /// </example>
         public Curve InterpolateWith(Curve otherCurve, double interpolationRatio, int samplePoints = 50)
         {
-            if (interpolationRatio < 0 || interpolationRatio > 1)
-                throw new ArgumentException("Interpolation ratio must be between 0 and 1");
+            if (otherCurve == null)
+                throw new ArgumentNullException(nameof(otherCurve));
 
             // Determine the interpolated domain
             double newXMin = XMin + interpolationRatio * (otherCurve.XMin - XMin);
@@ -934,22 +937,22 @@ namespace PolyCurve
         /// <summary>
         /// Interpolates this curve with another curve using direct coefficient interpolation.
         /// Use this when both curves have similar domains and you want to preserve polynomial structure exactly.
+        /// Supports extrapolation when interpolationRatio is outside [0,1].
         /// </summary>
         /// <param name="otherCurve">The target curve to interpolate towards. Must not be null.</param>
-        /// <param name="interpolationRatio">The interpolation factor between 0 and 1. 0 returns this curve, 1 returns the other curve.</param>
+        /// <param name="interpolationRatio">The interpolation factor. 0 returns this curve, 1 returns the other curve. Values outside [0,1] extrapolate.</param>
         /// <returns>A new Curve object with interpolated coefficients and domain bounds.</returns>
         /// <exception cref="ArgumentNullException">Thrown when otherCurve is null.</exception>
-        /// <exception cref="ArgumentException">Thrown when interpolationRatio is not between 0 and 1.</exception>
         /// <example>
         /// <code>
         /// var interpolated = curve1.InterpolateWithCoefficients(curve2, 0.3);
-        /// // Preserves exact polynomial structure
+        /// var extrapolated = curve1.InterpolateWithCoefficients(curve2, -0.5); // Extrapolates in opposite direction
         /// </code>
         /// </example>
         public Curve InterpolateWithCoefficients(Curve otherCurve, double interpolationRatio)
         {
-            if (interpolationRatio < 0 || interpolationRatio > 1)
-                throw new ArgumentException("Interpolation ratio must be between 0 and 1");
+            if (otherCurve == null)
+                throw new ArgumentNullException(nameof(otherCurve));
 
             // Interpolate bounds
             double newXMin = XMin + interpolationRatio * (otherCurve.XMin - XMin);
@@ -967,6 +970,169 @@ namespace PolyCurve
             }
 
             return new Curve(newCoeffs, newXMin, newXMax);
+        }
+
+        /// <summary>
+        /// Interpolates this curve with another curve such that the result passes through the specified point.
+        /// Uses binary search to find the optimal interpolation ratio that minimizes error at the target point.
+        /// </summary>
+        /// <param name="otherCurve">The target curve to interpolate towards. Must not be null.</param>
+        /// <param name="pointToPassThrough">The point that the interpolated curve must pass through.</param>
+        /// <param name="samplePoints">Number of points to sample for creating the interpolated curve. Defaults to 50.</param>
+        /// <returns>A new Curve object that passes through the specified point.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when otherCurve or pointToPassThrough is null.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when both curves have the same Y value at the point's X coordinate.</exception>
+        /// <example>
+        /// <code>
+        /// var targetPoint = new Point2D(3.0, 15.0);
+        /// var interpolated = curve1.InterpolateWith(curve2, targetPoint);
+        /// </code>
+        /// </example>
+        public Curve InterpolateWith(Curve otherCurve, Point2D pointToPassThrough, int samplePoints = 50)
+        {
+            if (otherCurve == null)
+                throw new ArgumentNullException(nameof(otherCurve));
+            if (pointToPassThrough == null)
+                throw new ArgumentNullException(nameof(pointToPassThrough));
+
+            // Get initial estimate
+            double initialRatio = CalculateInterpolationRatio(otherCurve, pointToPassThrough);
+
+            // Use binary search to find the best ratio
+            double bestRatio = initialRatio;
+            double minError = double.MaxValue;
+
+            // Start with a wide search range around the initial estimate
+            double searchMin = initialRatio - 2.0;
+            double searchMax = initialRatio + 2.0;
+            double tolerance = 1e-8;
+            int maxIterations = 50;
+
+            // Binary search for the optimal ratio
+            for (int iteration = 0; iteration < maxIterations; iteration++)
+            {
+                double mid1 = searchMin + (searchMax - searchMin) / 3;
+                double mid2 = searchMin + 2 * (searchMax - searchMin) / 3;
+
+                // Evaluate error at both midpoints
+                var curve1 = InterpolateWith(otherCurve, mid1, samplePoints);
+                var curve2 = InterpolateWith(otherCurve, mid2, samplePoints);
+
+                double error1 = Math.Abs(curve1.EvaluateAt(pointToPassThrough.X).Y - pointToPassThrough.Y);
+                double error2 = Math.Abs(curve2.EvaluateAt(pointToPassThrough.X).Y - pointToPassThrough.Y);
+
+                // Update best ratio if we found a better one
+                if (error1 < minError)
+                {
+                    minError = error1;
+                    bestRatio = mid1;
+                }
+                if (error2 < minError)
+                {
+                    minError = error2;
+                    bestRatio = mid2;
+                }
+
+                // Check if we're close enough
+                if (minError < tolerance)
+                    break;
+
+                // Narrow the search range
+                if (error1 < error2)
+                {
+                    searchMax = mid2;
+                }
+                else
+                {
+                    searchMin = mid1;
+                }
+
+                // If the range is too small, stop
+                if (searchMax - searchMin < tolerance)
+                    break;
+            }
+
+            // If we couldn't get close enough with binary search, try including the point directly
+            if (minError > 0.1)
+            {
+                // Create a modified sampling that includes the target point
+                var modifiedPoints = new List<Point2D>();
+
+                // Add the target point
+                modifiedPoints.Add(pointToPassThrough);
+
+                // Sample other points using the best ratio found
+                for (int i = 0; i < samplePoints - 1; i++)
+                {
+                    double t = i / (double)(samplePoints - 2);
+
+                    // Map to each curve's domain
+                    double x1 = XMin + t * (XMax - XMin);
+                    double x2 = otherCurve.XMin + t * (otherCurve.XMax - otherCurve.XMin);
+
+                    // Get y values from each curve
+                    double y1 = EvaluateAt(x1).Y;
+                    double y2 = otherCurve.EvaluateAt(x2).Y;
+
+                    // Interpolate positions
+                    double interpolatedX = x1 + bestRatio * (x2 - x1);
+                    double interpolatedY = y1 + bestRatio * (y2 - y1);
+
+                    // Skip if too close to target point
+                    if (Math.Abs(interpolatedX - pointToPassThrough.X) > 0.01)
+                    {
+                        modifiedPoints.Add(new Point2D(interpolatedX, interpolatedY));
+                    }
+                }
+
+                // Sort by X
+                modifiedPoints = modifiedPoints.OrderBy(p => p.X).ToList();
+
+                // Determine bounds
+                double newXMin = XMin + bestRatio * (otherCurve.XMin - XMin);
+                double newXMax = XMax + bestRatio * (otherCurve.XMax - XMax);
+
+                // Ensure bounds include the target point
+                newXMin = Math.Min(newXMin, pointToPassThrough.X - 0.1);
+                newXMax = Math.Max(newXMax, pointToPassThrough.X + 0.1);
+
+                // Determine degree
+                int targetDegree = Math.Min(
+                    Math.Max(PolynomialDegree, otherCurve.PolynomialDegree),
+                    modifiedPoints.Count - 1
+                );
+
+                return new Curve(modifiedPoints, targetDegree, newXMin, newXMax);
+            }
+
+            // Return the curve with the best ratio found
+            return InterpolateWith(otherCurve, bestRatio, samplePoints);
+        }
+
+        /// <summary>
+        /// Interpolates this curve with another curve using direct coefficient interpolation such that the result passes through the specified point.
+        /// The interpolation ratio is calculated automatically. May extrapolate if needed.
+        /// </summary>
+        /// <param name="otherCurve">The target curve to interpolate towards. Must not be null.</param>
+        /// <param name="pointToPassThrough">The point that the interpolated curve must pass through.</param>
+        /// <returns>A new Curve object with interpolated coefficients that passes through the specified point.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when otherCurve or pointToPassThrough is null.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when both curves have the same Y value at the point's X coordinate.</exception>
+        /// <example>
+        /// <code>
+        /// var targetPoint = new Point2D(2.5, 10.0);
+        /// var interpolated = curve1.InterpolateWithCoefficients(curve2, targetPoint);
+        /// </code>
+        /// </example>
+        public Curve InterpolateWithCoefficients(Curve otherCurve, Point2D pointToPassThrough)
+        {
+            if (otherCurve == null)
+                throw new ArgumentNullException(nameof(otherCurve));
+            if (pointToPassThrough == null)
+                throw new ArgumentNullException(nameof(pointToPassThrough));
+
+            double ratio = CalculateInterpolationRatio(otherCurve, pointToPassThrough);
+            return InterpolateWithCoefficients(otherCurve, ratio);
         }
 
         #endregion
@@ -1446,6 +1612,37 @@ namespace PolyCurve
                 result += coeff * (Math.Pow(b, i + 1) - Math.Pow(a, i + 1));
             }
             return result;
+        }
+
+        private double CalculateInterpolationRatio(Curve otherCurve, Point2D pointToPassThrough)
+        {
+            double px = pointToPassThrough.X;
+            double py = pointToPassThrough.Y;
+
+            // Evaluate both curves at the x-coordinate of the target point
+            double y1 = EvaluateAt(px).Y;
+            double y2 = otherCurve.EvaluateAt(px).Y;
+
+            // Check if interpolation is possible
+            if (Math.Abs(y2 - y1) < 1e-10)
+            {
+                if (Math.Abs(y1 - py) < 1e-10)
+                {
+                    // The point is already on both curves, any ratio works
+                    return 0.5;
+                }
+                else
+                {
+                    throw new InvalidOperationException(
+                        $"Cannot interpolate: both curves have the same Y value ({y1:F6}) at X = {px:F6}, " +
+                        $"but the target Y value is {py:F6}. The curves are parallel at this point.");
+                }
+            }
+
+            // Calculate the interpolation ratio
+            // We want: y1 + ratio * (y2 - y1) = py
+            // Solving for ratio: ratio = (py - y1) / (y2 - y1)
+            return (py - y1) / (y2 - y1);
         }
 
         #endregion

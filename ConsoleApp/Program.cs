@@ -192,7 +192,7 @@ Console.WriteLine($"Vertically shifted by +50: {shiftedV}");
 Console.WriteLine("\n====================================================\n");
 
 //====================================================
-// 10. Curve Interactions
+// 10. CURVE INTERACTIONS
 //====================================================
 Console.WriteLine("10. CURVE INTERACTIONS\n");
 
@@ -213,6 +213,27 @@ Console.WriteLine($"\nInterpolated curve (30% towards line): {interpolated1}");
 
 Curve interpolated2 = polynomialCurve.InterpolateWithCoefficients(lineCurve, 0.3);
 Console.WriteLine($"Coefficient interpolation (30% towards line): {interpolated2}");
+
+// Extrapolation beyond [0,1] bounds
+Curve extrapolated = polynomialCurve.InterpolateWithCoefficients(lineCurve, 1.5);
+Console.WriteLine($"Extrapolation (150% towards line): {extrapolated}");
+
+// Point-constrained interpolation
+Point2D targetPoint = new Point2D(5.0, 50.0);
+Console.WriteLine($"\nTarget constraint point: {targetPoint}");
+
+try
+{
+    Curve constrained = polynomialCurve.InterpolateWithCoefficients(lineCurve, targetPoint);
+    Point2D verification = constrained.EvaluateAt(targetPoint.X);
+    Console.WriteLine($"Point-constrained interpolation: {constrained}");
+    Console.WriteLine($"Verification at x={targetPoint.X}: {verification}");
+    Console.WriteLine($"Constraint error: {Math.Abs(verification.Y - targetPoint.Y):F6}");
+}
+catch (InvalidOperationException ex)
+{
+    Console.WriteLine($"Point constraint failed: {ex.Message}");
+}
 
 Console.WriteLine("\n====================================================\n");
 
