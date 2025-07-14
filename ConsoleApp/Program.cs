@@ -48,8 +48,8 @@ Console.WriteLine("\n====================================================\n");
 Console.WriteLine("2. BASIC EVALUATION\n");
 
 double x = 5.0;
-Point2D point = polynomialCurve.EvaluateAt(x);
-Console.WriteLine($"Evaluating polynomial at x = {x}: {point}");
+Point2D pointEvaluation = polynomialCurve.EvaluateAt(x);
+Console.WriteLine($"Evaluating polynomial at x = {x}: {pointEvaluation}");
 
 Console.WriteLine("\n====================================================\n");
 
@@ -401,6 +401,56 @@ foreach (var intersectionPoint in commonIntersections)
 {
     Console.WriteLine($"    {intersectionPoint}");
 }
+
+Console.WriteLine("\n====================================================\n");
+
+//====================================================
+// 15. Point Generation
+//====================================================
+Console.WriteLine("15. POINT GENERATION\n");
+
+// Generate points across full domain
+var allPoints = polynomialCurve.GeneratePoints(20);
+Console.WriteLine("Generated 20 points across full domain:");
+foreach (var point in allPoints.Take(5)) // Show first 5
+{
+    Console.WriteLine($"    {point}");
+}
+Console.WriteLine($"    ... and {allPoints.Count() - 5} more points");
+
+// Generate points in specific range
+var rangePoints = polynomialCurve.GeneratePoints(10, 0, 6);
+Console.WriteLine($"\nGenerated 10 points from x=0 to x=6:");
+foreach (var point in rangePoints)
+{
+    Console.WriteLine($"    {point}");
+}
+
+// Engineering application: Export curve data for external analysis
+var exportPoints = polynomialCurve.GeneratePoints(500);
+Console.WriteLine($"\nExported {exportPoints.Count()} points for detailed analysis");
+Console.WriteLine($"X range: [{exportPoints.First().X:F2}, {exportPoints.Last().X:F2}]");
+Console.WriteLine($"Y range: [{exportPoints.Min(p => p.Y):F2}, {exportPoints.Max(p => p.Y):F2}]");
+
+// Demonstrate different sampling densities
+Console.WriteLine("\nSampling density comparison:");
+var coarse = polynomialCurve.GeneratePoints(10);
+var medium = polynomialCurve.GeneratePoints(50);
+var fine = polynomialCurve.GeneratePoints(200);
+
+Console.WriteLine($"Coarse sampling (10 points): Step size ≈ {(polynomialCurve.XMax - polynomialCurve.XMin) / 9:F2}");
+Console.WriteLine($"Medium sampling (50 points): Step size ≈ {(polynomialCurve.XMax - polynomialCurve.XMin) / 49:F2}");
+Console.WriteLine($"Fine sampling (200 points): Step size ≈ {(polynomialCurve.XMax - polynomialCurve.XMin) / 199:F2}");
+
+// Web chart preparation example
+var chartData = polynomialCurve.GeneratePoints(100, 0, 10)
+    .Select(p => new { x = Math.Round(p.X, 3), y = Math.Round(p.Y, 3) });
+Console.WriteLine($"\nChart-ready data sample:");
+foreach (var dataPoint in chartData.Take(3))
+{
+    Console.WriteLine($"    {{x: {dataPoint.x}, y: {dataPoint.y}}}");
+}
+Console.WriteLine($"    ... and {chartData.Count() - 3} more data points");
 
 Console.WriteLine("\n====================================================\n");
 

@@ -6,6 +6,7 @@ A lightweight .NET library for polynomial curve generation, manipulation, and an
 
 - **Polynomial Creation**: Define a polynomial either by direct coefficients or by fitting to (x,y) data.
 - **Evaluation**: Evaluate the polynomial at any x-value.
+- **Point Generation**: Generate evenly-spaced points along the curve for visualization and data export.
 - **Analysis**: Find roots, local/global minima and maxima, inflection points, tangents, normals, etc.
 - **Integration & Differentiation**: Automatically compute derivative and antiderivative curves.
 - **Domain Operations**: Temporarily change curve bounds with `WithBounds()` and `WithExpandedBounds()`.

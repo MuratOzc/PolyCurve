@@ -152,6 +152,41 @@ namespace PolyCurve
             return new Point2D(xValue, y);
         }
 
+        /// <summary>
+        /// Generates a specified number of evenly-spaced points along the curve.
+        /// Points are distributed uniformly across the X domain from start to end.
+        /// </summary>
+        /// <param name="count">Number of points to generate. Must be at least 2.</param>
+        /// <param name="xStart">Starting X-value. If null, uses the curve's XMin.</param>
+        /// <param name="xEnd">Ending X-value. If null, uses the curve's XMax.</param>
+        /// <returns>Collection of Point2D objects representing points on the curve.</returns>
+        /// <exception cref="ArgumentException">Thrown when count is less than 2 or xStart >= xEnd.</exception>
+        /// <example>
+        /// <code>
+        /// var points = curve.GeneratePoints(50); // 50 points across full domain
+        /// var subset = curve.GeneratePoints(20, 2.0, 8.0); // 20 points from x=2 to x=8
+        /// </code>
+        /// </example>
+        public IEnumerable<Point2D> GeneratePoints(int count, double? xStart = null, double? xEnd = null)
+        {
+            if (count < 2)
+                throw new ArgumentException("Point count must be at least 2");
+
+            double startX = xStart ?? XMin;
+            double endX = xEnd ?? XMax;
+
+            if (startX >= endX)
+                throw new ArgumentException("Start X must be less than end X");
+
+            double step = (endX - startX) / (count - 1);
+
+            for (int i = 0; i < count; i++)
+            {
+                double x = startX + i * step;
+                yield return EvaluateAt(x);
+            }
+        }
+
         #endregion
 
         #region Curve Segmentation

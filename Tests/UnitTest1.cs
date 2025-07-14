@@ -234,6 +234,101 @@ namespace Tests
 
         #endregion
 
+        #region Point Generation Tests
+
+        [Test]
+        public void TestGeneratePoints_BasicFunctionality()
+        {
+            var points = testCurve.GeneratePoints(5).ToArray();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(points.Length, Is.EqualTo(5), "Should generate exact number of points requested");
+                Assert.That(points[0].X, Is.EqualTo(testCurve.XMin), "First point should be at XMin");
+                Assert.That(points[4].X, Is.EqualTo(testCurve.XMax), "Last point should be at XMax");
+
+                // Check that points are evenly spaced
+                double expectedStep = (testCurve.XMax - testCurve.XMin) / 4;
+                for (int i = 1; i < points.Length; i++)
+                {
+                    double actualStep = points[i].X - points[i - 1].X;
+                    Assert.That(actualStep, Is.EqualTo(expectedStep).Within(HighPrecisionTolerance),
+                        $"Points should be evenly spaced at step {i}");
+                }
+            });
+        }
+
+        [Test]
+        public void TestGeneratePoints_CustomRange()
+        {
+            var points = testCurve.GeneratePoints(10, -1, 1).ToArray();
+
+            Assert.Multiple(() =>
+            {
+                Assert.That(points.Length, Is.EqualTo(10), "Should generate exact number of points requested");
+                Assert.That(points[0].X, Is.EqualTo(-1), "First point should be at custom start");
+                Assert.That(points[9].X, Is.EqualTo(1), "Last point should be at custom end");
+
+                // Verify Y values are correct for known function
+                for (int i = 0; i < points.Length; i++)
+                {
+                    var expectedPoint = testCurve.EvaluateAt(points[i].X);
+                    AssertPointEqual(points[i], expectedPoint);
+                }
+            });
+        }
+
+        [Test]
+        public void TestGeneratePoints_ErrorHandling()
+        {
+            Assert.Multiple(() =>
+            {
+                Assert.Throws<ArgumentException>(() => testCurve.GeneratePoints(1),
+                    "Should throw for count < 2");
+                Assert.Throws<ArgumentException>(() => testCurve.GeneratePoints(0),
+                    "Should throw for count = 0");
+                Assert.Throws<ArgumentException>(() => testCurve.GeneratePoints(-5),
+                    "Should throw for negative count");
+                Assert.Throws<ArgumentException>(() => testCurve.GeneratePoints(10, 5, 3),
+                    "Should throw when start >= end");
+                Assert.Throws<ArgumentException>(() => testCurve.GeneratePoints(10, 2, 2),
+                    "Should throw when start == end");
+            });
+        }
+
+        [Test]
+        public void TestGeneratePoints_ConsistencyWithEvaluateAt()
+        {
+            var points = polynomialCurve.GeneratePoints(100);
+
+            foreach (var point in points)
+            {
+                var directEvaluation = polynomialCurve.EvaluateAt(point.X);
+                AssertPointEqual(point, directEvaluation);
+            }
+        }
+
+        [Test]
+        public void TestGeneratePoints_EdgeCases()
+        {
+            Assert.Multiple(() =>
+            {
+                // Minimum count
+                var twoPoints = testCurve.GeneratePoints(2);
+                Assert.That(twoPoints.Count(), Is.EqualTo(2), "Should handle minimum count of 2");
+
+                // Large count
+                var manyPoints = testCurve.GeneratePoints(10000);
+                Assert.That(manyPoints.Count(), Is.EqualTo(10000), "Should handle large point counts");
+
+                // Very small range
+                var smallRange = testCurve.GeneratePoints(5, 0, 0.001);
+                Assert.That(smallRange.Count(), Is.EqualTo(5), "Should handle very small ranges");
+            });
+        }
+
+        #endregion
+
         #region Curve Segmentation Tests
 
         [Test]
