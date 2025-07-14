@@ -283,15 +283,15 @@ namespace Tests
         {
             Assert.Multiple(() =>
             {
-                Assert.Throws<ArgumentException>(() => testCurve.GeneratePoints(1),
+                Assert.Throws<ArgumentException>(() => testCurve.GeneratePoints(1).ToArray(),
                     "Should throw for count < 2");
-                Assert.Throws<ArgumentException>(() => testCurve.GeneratePoints(0),
+                Assert.Throws<ArgumentException>(() => testCurve.GeneratePoints(0).ToArray(),
                     "Should throw for count = 0");
-                Assert.Throws<ArgumentException>(() => testCurve.GeneratePoints(-5),
+                Assert.Throws<ArgumentException>(() => testCurve.GeneratePoints(-5).ToArray(),
                     "Should throw for negative count");
-                Assert.Throws<ArgumentException>(() => testCurve.GeneratePoints(10, 5, 3),
+                Assert.Throws<ArgumentException>(() => testCurve.GeneratePoints(10, 5, 3).ToArray(),
                     "Should throw when start >= end");
-                Assert.Throws<ArgumentException>(() => testCurve.GeneratePoints(10, 2, 2),
+                Assert.Throws<ArgumentException>(() => testCurve.GeneratePoints(10, 2, 2).ToArray(),
                     "Should throw when start == end");
             });
         }
